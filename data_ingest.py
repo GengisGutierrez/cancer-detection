@@ -6,6 +6,10 @@ IMG_HEIGHT = 256
 BUFFER_SIZE = 20
 BATCH_SIZE = 1
 
+ROOT_PATH = "C:/Users/G6367033/PycharmProjects/cancerdetection/dataset/LIDC-IDRI"
+TRAIN_PATH = os.path.join(ROOT_PATH, "train")
+VAL_PATH = os.path.join(ROOT_PATH, "val")
+TEST_PATH = os.path.join(ROOT_PATH, "test")
 
 def load(input_image, real_image):
     input_image = tf.io.read_file(input_image)
@@ -67,7 +71,7 @@ def random_jitter(input_image, real_image):
     return input_image, real_image
 
 
-def input_pipeline(train_path, val_path):
+def input_pipeline(train_path=TRAIN_PATH, val_path=VAL_PATH):
     train_feature_dataset = tf.data.Dataset.list_files(os.path.join(train_path, "feature/*.jpg"))
     train_label_dataset = tf.data.Dataset.list_files(os.path.join(train_path, "label/*.jpg"))
 
