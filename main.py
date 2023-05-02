@@ -7,10 +7,11 @@ import datetime
 from IPython import display
 from matplotlib import pyplot as plt
 from data_ingest import input_pipeline
-from keras.utils.vis_utils import plot_model
 
 
 OUTPUT_CHANNELS = 3
+LAMBDA = 100
+loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
 
 def downsample(filters, size, apply_batchnorm=True):
@@ -99,8 +100,9 @@ def main():
     print(train_dataset)
     generator = Generator()
     gen_output = generator(img[tf.newaxis, ...], training=False)
+    print(type(gen_output))
     plt.figure()
-    plt.imshow(gen_output[0, ...])
+    plt.imshow(gen_output[0]/ tf.math.reduce_max(gen_output[0]))
     plt.show()
 
 
