@@ -21,24 +21,6 @@ VAL_PATH = os.path.join(ROOT_PATH, "val")
 TEST_PATH = os.path.join(ROOT_PATH, "test")
 
 
-def ingest_data():
-    train_datagen = ImageDataGenerator()
-    val_datagen = ImageDataGenerator()
-    print("Training images:")
-    train_data = train_datagen.flow_from_directory(TRAIN_PATH,
-                                                   target_size=IMAGE_SHAPE,
-                                                   batch_size=BATCH_SIZE,
-                                                   class_mode="input",
-                                                   )
-    print("Validation images:")
-    val_data = val_datagen.flow_from_directory(VAL_PATH,
-                                               target_size=IMAGE_SHAPE,
-                                               batch_size=BATCH_SIZE,
-                                               class_mode="input",
-                                               )
-    return train_data, val_data
-
-
 def load(input_image, real_image):
     input_image = tf.io.read_file(input_image)
     input_image = tf.io.decode_jpeg(input_image)
@@ -72,16 +54,16 @@ def random_crop(input_image, real_image):
     return cropped_image[0], cropped_image[1]
 
 
-def load_image_train(train_data):
-    train_image, train_label = train_data.next()
-    train_label, train_image = random_jitter(train_label[0], train_image[0])
+def load_image_train(input_image, real_image):
+    train_label, train_image = load(input_image, real_image)
+    train_label, train_image = random_jitter(train_label, train_image)
     train_label, train_image = normalize(train_label, train_image)
     return train_image, train_label
 
 
-def load_image_val(val_data):
-    val_image, val_label = val_data.next()
-    val_label, val_image = resize(val_label[0], val_image[0],
+def load_image_val(input_image, real_image):
+    val_label, val_image = load(input_image, real_image)
+    val_label, val_image = resize(val_label, val_image,
                                   IMG_HEIGHT, IMG_WIDTH)
     val_label, val_image = normalize(val_label, val_image)
     return val_image, val_label
@@ -99,10 +81,29 @@ def random_jitter(input_image, real_image):
     return input_image, real_image
 
 
+def input_pipeline():
+    train_feature_dataset = tf.data.Dataset.list_files(os.path.join(TRAIN_PATH, "feature/*.jpg"))
+    train_label_dataset = tf.data.Dataset.list_files(os.path.join(TRAIN_PATH, "label/*.jpg"))
+
+    train_dataset = tf.data.Dataset.zip((train_feature_dataset, train_label_dataset))
+    train_dataset = train_dataset.map(lambda x, y: (load_image_train(y, x)),
+                                      num_parallel_calls=tf.data.AUTOTUNE)
+    train_dataset = train_dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+
+    val_feature_dataset = tf.data.Dataset.list_files(os.path.join(VAL_PATH, "feature/*.jpg"))
+    val_label_dataset = tf.data.Dataset.list_files(os.path.join(VAL_PATH, "label/*jpg"))
+
+    val_dataset = tf.data.Dataset.zip((val_feature_dataset, val_label_dataset))
+    val_dataset = val_dataset.map(lambda x, y: (load_image_val(y, x)))
+    val_dataset = val_dataset.batch(BATCH_SIZE)
+
+    print(train_dataset,"\n", val_dataset)
+
 def main():
-    train_data, val_data = ingest_data()
-    train_image, train_label = load_image_train(train_data)
-    val_image, val_label = load_image_val(val_data)
+    input_pipeline()
+    # train_data, val_data = ingest_data()
+    # train_image, train_label = load_image_train(train_data)
+    # val_image, val_label = load_image_val(val_data)
 
 
 
