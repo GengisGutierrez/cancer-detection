@@ -4,9 +4,11 @@ import os
 import time
 import datetime
 
-from matplotlib import pyplot as plt
 from IPython import display
+from matplotlib import pyplot as plt
 from data_ingest import input_pipeline
+from keras.utils.vis_utils import plot_model
+
 
 OUTPUT_CHANNELS = 3
 
@@ -38,20 +40,68 @@ def upsample(filters, size, apply_dropout=False):
     return result
 
 
+def Generator():
+    inputs = tf.keras.layers.Input(shape=[256, 256, 3])
+
+    down_stack = [
+        downsample(64, 4, apply_batchnorm=False),
+        downsample(128, 4),
+        downsample(256, 4),
+        downsample(512, 4),
+        downsample(512, 4),
+        downsample(512, 4),
+        downsample(512, 4),
+        downsample(512, 4),
+    ]
+
+    up_stack = [
+        upsample(512, 4, apply_dropout=True),
+        upsample(512, 4, apply_dropout=True),
+        upsample(512, 4, apply_dropout=True),
+        upsample(512, 4),
+        upsample(256, 4),
+        upsample(128, 4),
+        upsample(64, 4),
+    ]
+
+    initializer = tf.random_normal_initializer(0., 0.02)
+    last = tf.keras.layers.Conv2DTranspose(OUTPUT_CHANNELS, 4,
+                                           strides=2,
+                                           padding='same',
+                                           kernel_initializer=initializer,
+                                           activation='tanh')
+    x = inputs
+
+    # Downsampling throught the model
+    skips = []
+    for down in down_stack:
+        x = down(x)
+        skips.append(x)
+    skips = reversed(skips[:-1])
+
+    # Upsampling and establishing the skip conecctions
+    for up, skip in zip(up_stack, skips):
+        x = up(x)
+        x = tf.keras.layers.Concatenate()([x, skip])
+
+    x = last(x)
+
+    return tf.keras.Model(inputs=inputs, outputs=x)
 
 
 def main():
     global img
     train_dataset, val_dataset = input_pipeline()
-    for train_image, train_label in train_dataset.take(1):
-        img = train_image[0].numpy()
+    for train_image, train_label in train_dataset:
+        img = train_image[0]
         lbl = train_label[0].numpy()
 
-    down_model = downsample(3, 4)
-    down_result = down_model(tf.expand_dims(img, 0))
-    up_model = upsample(3, 4)
-    up_result = up_model(down_result)
-    print(up_result.shape)
+    print(train_dataset)
+    generator = Generator()
+    gen_output = generator(img[tf.newaxis, ...], training=False)
+    plt.figure()
+    plt.imshow(gen_output[0, ...])
+    plt.show()
 
 
 if __name__ == "__main__":
