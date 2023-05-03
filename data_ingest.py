@@ -11,6 +11,7 @@ TRAIN_PATH = os.path.join(ROOT_PATH, "train")
 VAL_PATH = os.path.join(ROOT_PATH, "val")
 TEST_PATH = os.path.join(ROOT_PATH, "test")
 
+
 def load(input_image, real_image):
     input_image = tf.io.read_file(input_image)
     input_image = tf.io.decode_jpeg(input_image)
